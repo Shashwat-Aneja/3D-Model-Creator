@@ -1,0 +1,31 @@
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #111;
+    color: #fff;
+    text-align: center;
+}
+
+h1 {
+    margin-top: 20px;
+}
+
+#dropZone {
+    width: 80%;
+    margin: 20px auto;
+    padding: 40px;
+    border: 2px dashed #666;
+    border-radius: 10px;
+    background: #222;
+    cursor: pointer;
+}
+
+#dropZone:hover {
+    border-color: #fff;
+}
+
+#canvas3d {
+    width: 100vw;
+    height: 80vh;
+    display: block;
+}
