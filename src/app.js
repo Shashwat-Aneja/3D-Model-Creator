@@ -1,23 +1,39 @@
-let scene, camera, renderer, loader;
+let scene, camera, renderer, loader, canvas;
+let currentModel = null;
+let currentObjectUrl = null;
+let loadGeneration = 0;
 
 function init() {
-    const canvas = document.getElementById("canvas3d");
+    canvas = document.getElementById("canvas3d");
 
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0x111111);
 
-    camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 5000);
+    camera = new THREE.PerspectiveCamera(60, 1, 1, 5000);
     camera.position.set(0, 1.5, 3);
 
-    renderer = new THREE.WebGLRenderer({ canvas });
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    resizeRenderer();
+    window.addEventListener("resize", resizeRenderer);
 
     loader = new THREE.GLTFLoader();
 
     const light = new THREE.HemisphereLight(0xffffff, 0x444444, 1.2);
     scene.add(light);
 
+    window.addEventListener("beforeunload", cleanupModelResources);
     animate();
+}
+
+function resizeRenderer() {
+    if (!canvas || !camera || !renderer) return;
+
+    const width = canvas.clientWidth || window.innerWidth;
+    const height = canvas.clientHeight || window.innerHeight;
+    camera.aspect = width / height;
+    camera.updateProjectionMatrix();
+    renderer.setSize(width, height, false);
 }
 
 function animate() {
@@ -25,11 +41,10 @@ function animate() {
     renderer.render(scene, camera);
 }
 
-// Drag-and-drop logic
 const dropZone = document.getElementById("dropZone");
 
-dropZone.addEventListener("dragover", (e) => {
-    e.preventDefault();
+dropZone.addEventListener("dragover", (event) => {
+    event.preventDefault();
     dropZone.style.borderColor = "#fff";
 });
 
@@ -37,35 +52,65 @@ dropZone.addEventListener("dragleave", () => {
     dropZone.style.borderColor = "#666";
 });
 
-dropZone.addEventListener("drop", (e) => {
-    e.preventDefault();
+dropZone.addEventListener("drop", (event) => {
+    event.preventDefault();
     dropZone.style.borderColor = "#666";
 
-    const file = e.dataTransfer.files[0];
+    const file = event.dataTransfer.files[0];
     if (!file) return;
 
-    const url = URL.createObjectURL(file);
-    loadModel(url);
+    if (!ModelUtils.isSupportedModelFile(file)) {
+        console.warn("Choose a non-empty .glb or .gltf file smaller than 100 MB.");
+        return;
+    }
+
+    loadModel(file);
 });
 
-function loadModel(fileUrl) {
-    loader.load(
-        fileUrl,
-        (gltf) => {
-            // Remove old models
-            scene.traverse((obj) => {
-                if (obj.isMesh) scene.remove(obj);
-            });
+function loadModel(file) {
+    const objectUrl = URL.createObjectURL(file);
+    const generation = ++loadGeneration;
 
-            const model = gltf.scene;
-            scene.add(model);
+    loader.load(
+        objectUrl,
+        (gltf) => {
+            if (generation !== loadGeneration) {
+                ModelUtils.disposeModel(gltf.scene);
+                URL.revokeObjectURL(objectUrl);
+                return;
+            }
+
+            const previousModel = currentModel;
+            const previousObjectUrl = currentObjectUrl;
+
+            currentModel = gltf.scene;
+            scene.add(currentModel);
+
+            if (previousModel) ModelUtils.disposeModel(previousModel);
+            if (previousObjectUrl) URL.revokeObjectURL(previousObjectUrl);
+
+            currentObjectUrl = objectUrl;
             console.log("Model loaded");
         },
         undefined,
-        (err) => {
-            console.error("Model failed to load:", err);
+        (error) => {
+            URL.revokeObjectURL(objectUrl);
+            console.error("Model failed to load:", error);
         }
     );
+}
+
+function cleanupModelResources() {
+    loadGeneration += 1;
+
+    if (currentModel) {
+        ModelUtils.disposeModel(currentModel);
+        currentModel = null;
+    }
+    if (currentObjectUrl) {
+        URL.revokeObjectURL(currentObjectUrl);
+        currentObjectUrl = null;
+    }
 }
 
 window.addEventListener("load", init);
