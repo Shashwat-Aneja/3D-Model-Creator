@@ -9,7 +9,7 @@ function init() {
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0x111111);
 
-    camera = new THREE.PerspectiveCamera(60, 1, 1, 5000);
+    camera = new THREE.PerspectiveCamera(60, 1, 0.01, 5000);
     camera.position.set(0, 1.5, 3);
 
     renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -34,6 +34,35 @@ function resizeRenderer() {
     camera.aspect = width / height;
     camera.updateProjectionMatrix();
     renderer.setSize(width, height, false);
+
+    if (currentModel) frameModel(currentModel);
+}
+
+function frameModel(model) {
+    const bounds = new THREE.Box3().setFromObject(model);
+    const sphere = bounds.getBoundingSphere(new THREE.Sphere());
+
+    if (!Number.isFinite(sphere.radius) || sphere.radius <= 0) {
+        console.warn("Model has no finite geometry to frame.");
+        return;
+    }
+
+    const distance = ModelUtils.calculateCameraDistance(
+        sphere.radius,
+        camera.fov,
+        camera.aspect,
+        1.25
+    );
+
+    camera.position.set(
+        sphere.center.x,
+        sphere.center.y + sphere.radius * 0.15,
+        sphere.center.z + distance
+    );
+    camera.near = Math.max(distance - sphere.radius * 2, 0.01);
+    camera.far = Math.max(distance + sphere.radius * 2, camera.near + 1);
+    camera.updateProjectionMatrix();
+    camera.lookAt(sphere.center);
 }
 
 function animate() {
@@ -85,6 +114,7 @@ function loadModel(file) {
 
             currentModel = gltf.scene;
             scene.add(currentModel);
+            frameModel(currentModel);
 
             if (previousModel) ModelUtils.disposeModel(previousModel);
             if (previousObjectUrl) URL.revokeObjectURL(previousObjectUrl);
