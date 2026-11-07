@@ -16,6 +16,22 @@
         return /\.(glb|gltf)$/i.test(file.name);
     }
 
+    function calculateCameraDistance(radius, fovDegrees, aspect, margin = 1.25) {
+        if (
+            !Number.isFinite(radius) || radius <= 0 ||
+            !Number.isFinite(fovDegrees) || fovDegrees <= 0 || fovDegrees >= 180 ||
+            !Number.isFinite(aspect) || aspect <= 0 ||
+            !Number.isFinite(margin) || margin < 1
+        ) {
+            throw new RangeError("Camera framing requires a positive radius, valid field of view, aspect ratio, and margin.");
+        }
+
+        const verticalHalfAngle = (fovDegrees * Math.PI) / 360;
+        const horizontalHalfAngle = Math.atan(Math.tan(verticalHalfAngle) * aspect);
+        const limitingHalfAngle = Math.min(verticalHalfAngle, horizontalHalfAngle);
+        return (radius / Math.sin(limitingHalfAngle)) * margin;
+    }
+
     function disposeModel(model) {
         if (!model || typeof model.traverse !== "function") return;
 
@@ -60,6 +76,7 @@
     return {
         MAX_MODEL_BYTES,
         isSupportedModelFile,
+        calculateCameraDistance,
         disposeModel,
     };
 });
