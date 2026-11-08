@@ -4,6 +4,7 @@ const test = require("node:test");
 const {
     MAX_MODEL_BYTES,
     isSupportedModelFile,
+    calculateCameraDistance,
     disposeModel,
 } = require("../src/model-utils.js");
 
@@ -46,4 +47,47 @@ test("disposes shared geometries, materials, textures, and detaches the model on
 test("safely ignores missing or non-traversable model values", () => {
     assert.doesNotThrow(() => disposeModel(null));
     assert.doesNotThrow(() => disposeModel({}));
+});
+
+test("calculates a positive camera distance for a model bounding box", () => {
+    const distance = calculateCameraDistance(
+        { width: 2, height: 2, depth: 2 },
+        60,
+        1,
+        1.2
+    );
+
+    assert.ok(Number.isFinite(distance));
+    assert.ok(distance > 0);
+});
+
+test("increases camera distance for a narrow viewport", () => {
+    const bounds = { width: 2, height: 2, depth: 2 };
+    const squareDistance = calculateCameraDistance(bounds, 60, 1, 1.2);
+    const portraitDistance = calculateCameraDistance(bounds, 60, 0.5, 1.2);
+
+    assert.ok(portraitDistance > squareDistance);
+});
+
+test("keeps degenerate model bounds at a usable minimum camera distance", () => {
+    assert.equal(calculateCameraDistance(
+        { width: 0, height: 0, depth: 0 },
+        60,
+        1
+    ), 0.1);
+});
+
+test("rejects invalid model bounds and camera parameters", () => {
+    assert.throws(
+        () => calculateCameraDistance({ width: -1, height: 2, depth: 3 }, 60, 1),
+        /negative dimensions/
+    );
+    assert.throws(
+        () => calculateCameraDistance({ width: 1, height: 2, depth: 3 }, 180, 1),
+        /field of view/
+    );
+    assert.throws(
+        () => calculateCameraDistance({ width: 1, height: 2, depth: 3 }, 60, 0),
+        /aspect ratio/
+    );
 });
