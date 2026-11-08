@@ -34,6 +34,32 @@ function resizeRenderer() {
     camera.aspect = width / height;
     camera.updateProjectionMatrix();
     renderer.setSize(width, height, false);
+
+    if (currentModel) {
+        frameModel(currentModel);
+    }
+}
+
+function frameModel(model) {
+    const bounds = new THREE.Box3().setFromObject(model);
+    const size = new THREE.Vector3();
+    const center = new THREE.Vector3();
+    bounds.getSize(size);
+    bounds.getCenter(center);
+
+    const distance = ModelUtils.calculateCameraDistance(
+        { width: size.x, height: size.y, depth: size.z },
+        camera.fov,
+        camera.aspect,
+        1.25
+    );
+    const viewDirection = new THREE.Vector3(1, 0.65, 1).normalize();
+
+    camera.position.copy(center).addScaledVector(viewDirection, distance);
+    camera.near = Math.max(distance / 1000, 0.01);
+    camera.far = Math.max(distance * 100, 1000);
+    camera.lookAt(center);
+    camera.updateProjectionMatrix();
 }
 
 function animate() {
@@ -85,6 +111,7 @@ function loadModel(file) {
 
             currentModel = gltf.scene;
             scene.add(currentModel);
+            frameModel(currentModel);
 
             if (previousModel) ModelUtils.disposeModel(previousModel);
             if (previousObjectUrl) URL.revokeObjectURL(previousObjectUrl);
