@@ -88,6 +88,6 @@ test("rejects invalid model bounds and camera parameters", () => {
     );
     assert.throws(
         () => calculateCameraDistance({ width: 1, height: 2, depth: 3 }, 60, 0),
-        /aspect ratio/
+        /aspect ratio/i
     );
 });
