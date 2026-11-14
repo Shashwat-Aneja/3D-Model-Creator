@@ -98,3 +98,17 @@ test("rejects fractional and unsafe file byte counts", () => {
     }
     assert.equal(isSupportedModelFile({ name: "scene.glb", size: 1 }), true);
 });
+
+test("cleans up textures and geometry even when material lacks dispose", () => {
+    let textures = 0;
+    let geometries = 0;
+    const material = { map: { isTexture: true, dispose() { textures++; } } };
+    const model = {
+        traverse(visit) {
+            visit({ material, geometry: { dispose() { geometries++; } } });
+        },
+    };
+    assert.doesNotThrow(() => disposeModel(model));
+    assert.equal(textures, 1);
+    assert.equal(geometries, 1);
+});
