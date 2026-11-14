@@ -91,3 +91,24 @@ test("rejects invalid model bounds and camera parameters", () => {
         /aspect ratio/i
     );
 });
+
+test("rejects fractional and unsafe file byte counts", () => {
+    for (const size of [0.5, 1024.25, Number.MAX_SAFE_INTEGER + 1, NaN, Infinity]) {
+        assert.equal(isSupportedModelFile({ name: "scene.glb", size }), false);
+    }
+    assert.equal(isSupportedModelFile({ name: "scene.glb", size: 1 }), true);
+});
+
+test("cleans up textures and geometry even when material lacks dispose", () => {
+    let textures = 0;
+    let geometries = 0;
+    const material = { map: { isTexture: true, dispose() { textures++; } } };
+    const model = {
+        traverse(visit) {
+            visit({ material, geometry: { dispose() { geometries++; } } });
+        },
+    };
+    assert.doesNotThrow(() => disposeModel(model));
+    assert.equal(textures, 1);
+    assert.equal(geometries, 1);
+});
