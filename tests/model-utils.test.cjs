@@ -91,3 +91,10 @@ test("rejects invalid model bounds and camera parameters", () => {
         /aspect ratio/i
     );
 });
+
+test("rejects fractional and unsafe file byte counts", () => {
+    for (const size of [0.5, 1024.25, Number.MAX_SAFE_INTEGER + 1, NaN, Infinity]) {
+        assert.equal(isSupportedModelFile({ name: "scene.glb", size }), false);
+    }
+    assert.equal(isSupportedModelFile({ name: "scene.glb", size: 1 }), true);
+});
