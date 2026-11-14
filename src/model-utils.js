@@ -10,7 +10,7 @@
 
     function isSupportedModelFile(file) {
         if (!file || typeof file.name !== "string") return false;
-        if (!Number.isFinite(file.size) || file.size <= 0 || file.size > MAX_MODEL_BYTES) {
+        if (!Number.isSafeInteger(file.size) || file.size <= 0 || file.size > MAX_MODEL_BYTES) {
             return false;
         }
         return /\.(glb|gltf)$/i.test(file.name);
