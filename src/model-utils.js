@@ -73,7 +73,9 @@
         });
 
         textures.forEach((texture) => texture.dispose());
-        materials.forEach((material) => material.dispose());
+        materials.forEach((material) => {
+            if (typeof material.dispose === "function") material.dispose();
+        });
         geometries.forEach((geometry) => geometry.dispose());
 
         if (model.parent && typeof model.parent.remove === "function") {
